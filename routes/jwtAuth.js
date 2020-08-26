@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const pool = require('../db');
 const bcrypt = require('bcrypt');
+const jwtGenerator = require('../util/jwtGenerator');
 
 router.post('/register', async (req, res) => {
   try {
@@ -17,11 +18,15 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(saltRounds);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
-    console.log(bcryptPassword);
+
     const newUser = await pool.query(
-      'INSERT INTO users (user_name, user_email, user_password) VALUES ($1, $2, $3)',
+      'INSERT INTO users (user_name, user_email, user_password) VALUES ($1, $2, $3) RETURNING *',
       [name, email, bcryptPassword]
     );
+
+    const token = jwtGenerator(newUser.rows[0].user_id)
+    res.json({ token });
+
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error!');
